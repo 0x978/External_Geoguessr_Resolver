@@ -1,7 +1,6 @@
 from collections import defaultdict
-
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 import uvicorn
 import json
 import time
@@ -31,12 +30,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
     try:
         while True:
-            await websocket.receive_text()  # ignore anything sent from client
+            await websocket.receive_text()
     except WebSocketDisconnect:
         clients[session_id].remove(websocket)
 
-
-from fastapi import Request
 
 @app.post("/coords")
 async def update_coords(request: Request):

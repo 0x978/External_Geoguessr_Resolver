@@ -11,6 +11,7 @@
 // @updateURL    TBC
 // ==/UserScript==
 
+// ====================================Global Vars====================================
 let globalCoordinates = new Proxy({ lat: 0, lng: 0 }, {
     set(target, prop, value) {
         if(target[prop] !== value) {
@@ -21,6 +22,8 @@ let globalCoordinates = new Proxy({ lat: 0, lng: 0 }, {
         }
     }
 });
+
+let sessionId
 
 // ====================================Overwriting Fetch====================================
 
@@ -55,10 +58,20 @@ function sendCoords() {
         body: JSON.stringify({
             "lat":globalCoordinates.lat,
             "lng":globalCoordinates.lng,
-            "sessionId":"1"
+            "sessionId":sessionId
         }),
         headers: {
             "Content-type": "application/json; charset=UTF-8"
         }
     });
 }
+
+// ====================================Misc====================================
+function generateGuid() { // Taken from: https://stackoverflow.com/a/2117523 :)
+    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+        (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+    );
+}
+
+sessionId = generateGuid();
+alert(`Your session ID is ${sessionId} please copy it and paste it into https://georesolver.0x978.com/`); // TODO Find better way?
