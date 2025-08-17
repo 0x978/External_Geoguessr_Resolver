@@ -33,7 +33,7 @@ export default function LandingPage() {
       }
 
       const success = await connect(token.trim())
-      
+
       if (success) {
         router.push("/dashboard")
       } else {
@@ -81,7 +81,7 @@ export default function LandingPage() {
                 <Input
                   id="token"
                   type="text"
-                  placeholder="0a1b6b7e-f50d-483b-9d54-571792e565ba"
+                  placeholder="Enter your token here"
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   onKeyPress={handleKeyPress}
