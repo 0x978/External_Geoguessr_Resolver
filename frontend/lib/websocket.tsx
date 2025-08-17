@@ -91,8 +91,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     sessionIdRef.current = sessionId
     clearTimers()
 
-        try {
-      const ws = new WebSocket(`wss://georesolver.0x978.com/ws/${sessionId}`)
+    try {
+      const wsString = window.location.hostname === 'localhost'
+          ? "ws://localhost:8000/ws"
+          : "wss://georesolver.0x978.com/ws"
+      const ws = new WebSocket(`${wsString}/${sessionId}`)
       wsRef.current = ws
 
       return new Promise((resolve) => {
