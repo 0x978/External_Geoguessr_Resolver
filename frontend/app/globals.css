@@ -122,3 +122,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+@layer utilities {
+  .site-bg {
+    opacity: 0.18;
+    background-image:
+            radial-gradient(700px 400px at 12% 18%, rgba(86, 255, 10, 0.06), transparent 60%),
+            radial-gradient(900px 600px at 88% 12%, rgba(86, 255, 10, 0.05), transparent 65%),
+            radial-gradient(rgba(86,255,10,0.10) 1px, transparent 1px);
+    background-size: auto, auto, 24px 24px;
+    background-position: 0% 0%, 0% 0%, 0 0;
+    animation: siteDrift 28s linear infinite alternate;
+  }
+
+  @keyframes siteDrift {
+    0%   { background-position: 0% 0%, 0% 0%, 0 0; }
+    100% { background-position: 4% 2%, -3% -2%, 24px 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-bg { animation: none; }
+  }
+}
