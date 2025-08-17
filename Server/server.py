@@ -22,12 +22,14 @@ app.add_middleware(
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
-    await websocket.accept()
-    clients[session_id].add(websocket)
+    await websocket.accept() # Accept incoming ws connection
+    clients[session_id].add(websocket) # Add to dict of clients
 
+    # When a user connects to ws, and we have some info stored for that ID, send it as they're a late joiner.
     if session_id in latest_coords:
         await websocket.send_text(json.dumps(latest_coords[session_id]))
 
+    # Keeps connection alive - any incoming msgs do nothing.
     try:
         while True:
             await websocket.receive_text()
@@ -35,6 +37,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         clients[session_id].remove(websocket)
 
 
+# Receives coords from JS extension
 @app.post("/coords")
 async def update_coords(request: Request):
     data = await request.json()
@@ -49,8 +52,10 @@ async def update_coords(request: Request):
         "sessionId": session_id,
     }
 
+    # Updates coords dict with coord info
     latest_coords[session_id] = res
 
+    # Send new coords info received to each ws connection with matching sessionId
     for client in clients[session_id].copy():
         try:
             await client.send_text(json.dumps(res))
