@@ -37,38 +37,21 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const sessionIdRef = useRef<string | null>(null)
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const maxReconnectAttempts = 5
 
-  // Clear all timers
+  // Clear reconnect timer
   const clearTimers = () => {
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current)
-      pingIntervalRef.current = null
-    }
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
     }
   }
 
-  // Start keep-alive ping
-  const startKeepAlive = () => {
-    clearTimers()
-    pingIntervalRef.current = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        try {
-          wsRef.current.send('ping')
-        } catch (error) {
-          console.error('Failed to send ping:', error)
-        }
-      }
-    }, 30000) // Send ping every 30 seconds
-  }
+  // No need for ping/pong - WebSocket connection is naturally persistent
 
-  // Auto-reconnect function
+    // Auto-reconnect function
   const attemptReconnect = () => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
       console.log('Max reconnection attempts reached')
@@ -77,14 +60,23 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // Don't reconnect if already connected or connecting
+    if (isConnected || isConnecting) {
+      console.log('Skipping reconnect - already connected or connecting')
+      return
+    }
+
     setIsReconnecting(true)
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000) // Exponential backoff, max 30s
+    // More conservative backoff: start at 3 seconds
+    const delay = Math.min(3000 * Math.pow(1.5, reconnectAttemptsRef.current), 45000) // Conservative backoff, max 45s
     console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`)
-    
+
     reconnectTimeoutRef.current = setTimeout(() => {
-      if (sessionIdRef.current) {
+      if (sessionIdRef.current && !isConnected && !isConnecting) {
         reconnectAttemptsRef.current++
         connect(sessionIdRef.current)
+      } else {
+        setIsReconnecting(false)
       }
     }, delay)
   }
@@ -99,29 +91,31 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     sessionIdRef.current = sessionId
     clearTimers()
 
-    try {
+        try {
       const ws = new WebSocket(`wss://georesolver.0x978.com/ws/${sessionId}`)
       wsRef.current = ws
 
       return new Promise((resolve) => {
+        let timeoutId: ReturnType<typeof setTimeout> | null = null
+
         ws.onopen = () => {
           console.log('WebSocket connected')
           setIsConnected(true)
           setIsConnecting(false)
           setIsReconnecting(false)
           reconnectAttemptsRef.current = 0 // Reset reconnect attempts on successful connection
-          startKeepAlive() // Start sending ping messages
+
+          // Clear connection timeout
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            timeoutId = null
+          }
+
           resolve(true)
         }
 
         ws.onmessage = (event) => {
           try {
-            // Handle pong responses from server
-            if (event.data === 'pong') {
-              console.log('Received pong from server')
-              return
-            }
-
             const data: LocationData = JSON.parse(event.data)
             console.log('Received location data:', data)
             setLocationData(data)
@@ -130,15 +124,23 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        ws.onclose = (event) => {
+                ws.onclose = (event) => {
           console.log('WebSocket disconnected', event.code, event.reason)
           setIsConnected(false)
           setIsConnecting(false)
           wsRef.current = null
           clearTimers()
-          
-          // Only attempt reconnection if we had a session and it wasn't a manual disconnect
-          if (sessionIdRef.current && event.code !== 1000) {
+
+          // Only attempt reconnection if:
+          // 1. We had a session
+          // 2. It wasn't a manual disconnect (1000)
+          // 3. We're not already reconnecting
+          // 4. It wasn't a connection timeout/rejection
+          if (sessionIdRef.current &&
+              event.code !== 1000 &&
+              !isReconnecting &&
+              (event.code === 1006 || event.code === 1005 || event.code === 1001)) {
+            console.log('Connection lost, attempting to reconnect...')
             attemptReconnect()
           }
         }
@@ -152,14 +154,15 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Set a timeout to reject if connection doesn't succeed
-        setTimeout(() => {
-          if (!isConnected) {
+        timeoutId = setTimeout(() => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            console.log('WebSocket connection timeout')
             setError('Connection timeout')
             setIsConnecting(false)
             ws.close()
             resolve(false)
           }
-        }, 10000) // 10 second timeout
+        }, 10000) // 10 seconds
       })
     } catch (err) {
       console.error('Error creating WebSocket:', err)
@@ -173,9 +176,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const disconnect = () => {
     clearTimers()
     reconnectAttemptsRef.current = 0
-    
+
     if (wsRef.current) {
-      wsRef.current.close(1000) // Normal closure
+      wsRef.current.close(1000) // Manual closure
       wsRef.current = null
     }
     setIsConnected(false)
@@ -189,6 +192,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     return () => {
       disconnect()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

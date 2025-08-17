@@ -13,7 +13,7 @@ import { reverseGeocode, generateGoogleMapsUrl, type LocationDetails } from "@/l
 type Detail = {
   label: string
   value: string
-  icon: React.ElementType
+  icon: React.ComponentType<{ className?: string }>
 }
 
 // Loading component for when waiting for game info
@@ -50,7 +50,7 @@ function SectionTitle({
   icon: Icon,
   children,
 }: {
-  icon: React.ElementType
+  icon: React.ComponentType<{ className?: string }>
   children: React.ReactNode
 }) {
   return (
@@ -103,7 +103,7 @@ function StatusTile({ connected, reconnecting }: { connected: boolean; reconnect
   if (reconnecting) {
     Icon = Loader2
     statusText = "Reconnecting"
-    statusColor = "#f59e0b" // amber color
+    statusColor = "#f59e0b"
   } else if (connected) {
     Icon = CheckCircle2
     statusText = "Online"
@@ -113,9 +113,9 @@ function StatusTile({ connected, reconnecting }: { connected: boolean; reconnect
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4 shadow-sm h-full flex flex-col">
       <div className="flex items-center justify-center gap-2 text-neutral-400 text-xs sm:text-sm">
-        <Icon 
-          className={`h-4 w-4 ${reconnecting ? 'animate-spin' : ''}`} 
-          style={{ color: statusColor }} 
+        <Icon
+          className={`h-4 w-4 ${reconnecting ? 'animate-spin' : ''}`}
+          style={{ color: statusColor }}
         />
         <span>Status</span>
       </div>
@@ -124,9 +124,9 @@ function StatusTile({ connected, reconnecting }: { connected: boolean; reconnect
           className="font-bold transition-all duration-300 ease-in-out"
           style={{
             color: statusColor,
-            textShadow: connected 
-              ? "0 0 8px rgba(86, 255, 10, 0.4)" 
-              : reconnecting 
+            textShadow: connected
+              ? "0 0 8px rgba(86, 255, 10, 0.4)"
+              : reconnecting
                 ? "0 0 8px rgba(245, 158, 11, 0.4)"
                 : "0 0 8px rgba(239, 68, 68, 0.4)",
           }}
@@ -172,26 +172,26 @@ export default function DashboardPage() {
     { label: "Country", value: locationDetails.country || "—", icon: Globe2 },
     { label: "State", value: locationDetails.state || "—", icon: MapPinned },
     { label: "County", value: locationDetails.county || "—", icon: Route },
-    { 
-      label: "City", 
-      value: getLocationValue(locationDetails.city, locationDetails.town), 
-      icon: Building2 
+    {
+      label: "City",
+      value: getLocationValue(locationDetails.city, locationDetails.town),
+      icon: Building2
     },
-    { 
-      label: "Area", 
-      value: getLocationValue(locationDetails.neighborhood, locationDetails.sublocality), 
-      icon: Home 
+    {
+      label: "Area",
+      value: getLocationValue(locationDetails.neighborhood, locationDetails.sublocality),
+      icon: Home
     },
-    { 
-      label: "Road", 
-      value: locationDetails.road || locationDetails.route || "—", 
-      icon: Navigation 
+    {
+      label: "Road",
+      value: locationDetails.road || "—",
+      icon: Navigation
     },
     { label: "Postcode", value: locationDetails.postcode || "—", icon: MapPin },
-    { 
-      label: "Place", 
-      value: getLocationValue(locationDetails.locationName, locationDetails.premise), 
-      icon: Building2 
+    {
+      label: "Place",
+      value: getLocationValue(locationDetails.locationName, locationDetails.premise),
+      icon: Building2
     },
   ]
 
@@ -238,12 +238,16 @@ export default function DashboardPage() {
                       src={mapsUrl}
                       width="100%"
                       height="100%"
-                      style={{ border: 0 }}
+                      style={{
+                        border: 0,
+                        overflow: 'hidden'
+                      }}
                       allowFullScreen
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
                       title="Location Map"
                       className="w-full h-full"
+                      allow="fullscreen"
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full p-4">

@@ -35,7 +35,7 @@ interface NominatimResponse {
 
 export async function reverseGeocode(lat: number, lng: number): Promise<LocationDetails> {
   try {
-    // Using Nominatim (OpenStreetMap) API for reverse geocoding - same as index.tsx
+    // API for reverse geocoding - same as the old index from Website/geoviewer
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`,
       {
@@ -51,9 +51,9 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
     }
 
     const data: NominatimResponse = await response.json()
-    
+
     if (!data.address) {
-      return { 
+      return {
         formattedAddress: data.display_name || 'Unknown location',
         country: '—',
         state: '—',
@@ -81,7 +81,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
     // Enhanced area/neighborhood extraction
     const neighborhood = address.neighbourhood || address.suburb || address.residential || '—'
     const sublocality = address.hamlet || address.suburb || '—'
-    
+
     // Build premise/location name from available data
     let locationName = '—'
     if (address.house_number && address.road) {
@@ -126,5 +126,6 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Location
 }
 
 export function generateGoogleMapsUrl(lat: number, lng: number): string {
-  return `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=14&output=embed`
+  // Interactive Google Maps embed with slightly reduced zoom and no tutorial messages
+  return `https://maps.google.com/maps?q=${lat},${lng}&hl=en&z=4&output=embed&gestureHandling=greedy&scrollwheel=true&disableDefaultUI=false`
 }
