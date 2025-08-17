@@ -102,7 +102,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Main content */}
-        <div id="content" className="grid grid-cols-1 gap-6 lg:grid-cols-2 mt-8 mb-16">
+        <div id="content" className="grid grid-cols-1 gap-6 lg:grid-cols-2 mt-8 mb-8">
           {/* Map View */}
           <Card className="border-neutral-800 bg-neutral-900/60">
             <CardHeader className={"relative flex items-center justify-center " + headerHeight}>
@@ -182,8 +182,21 @@ export default function DashboardPage() {
           </Card>
         </div>
 
+        {/* Return Button */}
+        <div className="flex justify-center mt-4 mb-2">
+          <Button
+              asChild
+              size="lg"
+              className="h-10 px-5 rounded-md bg-[#56FF0A] text-neutral-900 hover:bg-[#51ef0a] border border-neutral-800 shadow-md text-sm font-medium"
+          >
+            <a href="/" aria-label="Return Home">
+              {"Return"}
+            </a>
+          </Button>
+        </div>
+
         {/* Footer */}
-        <footer className="mt-10 border-t border-neutral-800">
+        <footer className="mt-6 border-t border-neutral-800">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-center text-sm text-neutral-400">
             {"Made by "}
             <a
