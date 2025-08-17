@@ -9,6 +9,7 @@ import HeroSection from "@/components/hero-section"
 import { Button } from "@/components/ui/button"
 import { useWebSocket } from "@/lib/websocket"
 import { reverseGeocode, generateGoogleMapsUrl, type LocationDetails } from "@/lib/geocoding"
+import {useRouter} from "next/navigation";
 
 type Detail = {
   label: string
@@ -139,10 +140,11 @@ function StatusTile({ connected, reconnecting }: { connected: boolean; reconnect
 }
 
 export default function DashboardPage() {
-  const { isConnected, isReconnecting, locationData } = useWebSocket()
+  const { isConnected, isReconnecting, locationData, connect } = useWebSocket()
   const [locationDetails, setLocationDetails] = useState<LocationDetails>({})
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [mapsUrl, setMapsUrl] = useState<string>("")
+  const router = useRouter()
 
   useEffect(() => {
     if (locationData) {
@@ -156,6 +158,15 @@ export default function DashboardPage() {
           setIsLoadingLocation(false)
         })
     }
+
+    if (!isConnected) { // If user refreshes page - can we still retrieve latest token?
+      const latestToken = localStorage.getItem("latestToken")
+      if (latestToken)
+        void connect(latestToken)
+      else
+        router.push("/")
+    }
+
   }, [locationData])
 
   // Show loading screen if no location data yet

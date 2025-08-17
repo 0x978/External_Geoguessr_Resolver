@@ -36,13 +36,17 @@ export default function LandingPage() {
 
       if (success) {
         router.push("/dashboard")
-      } else {
+        localStorage.setItem("latestToken", token);
+      }
+      else {
         setError(wsError || "Failed to connect to WebSocket")
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error connecting:", error)
       setError("Failed to establish connection")
-    } finally {
+    }
+    finally {
       setIsConnecting(false)
     }
   }
