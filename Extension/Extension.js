@@ -75,3 +75,6 @@ function generateGuid() { // Taken from: https://stackoverflow.com/a/2117523 :)
 
 sessionId = generateGuid();
 alert(`Your session ID is ${sessionId} please copy it and paste it into https://georesolver.0x978.com/`); // TODO Find better way?
+
+// Usage ping - sends only script version to server to track usage.
+fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.0`)

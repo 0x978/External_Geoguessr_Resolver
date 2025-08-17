@@ -4,7 +4,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { Globe2, MapPin, Navigation, Building2, Home, Route, MapPinned, CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import { Globe2, MapPin, Navigation, Building2, Home, Route, MapPinned, Loader2 } from "lucide-react"
 import HeroSection from "@/components/hero-section"
 import { Button } from "@/components/ui/button"
 import { useWebSocket } from "@/lib/websocket"
@@ -15,7 +15,7 @@ import LoadingScreen from "@/app/components/dashboard/loadingScreen";
 import StatusTile from "@/app/components/dashboard/statusTile";
 import SectionTitle from "@/app/components/dashboard/sectionTitle";
 import DetailTile from "@/app/components/dashboard/detailTile";
-
+import Link from "next/link";
 
 export default function DashboardPage() {
   const { isConnected, isReconnecting, locationData, connect } = useWebSocket()
@@ -189,9 +189,9 @@ export default function DashboardPage() {
               size="lg"
               className="h-10 px-5 rounded-md bg-[#56FF0A] text-neutral-900 hover:bg-[#51ef0a] border border-neutral-800 shadow-md text-sm font-medium"
           >
-            <a href="/" aria-label="Return Home">
+            <Link href="/" aria-label="Return Home">
               {"Return"}
-            </a>
+            </Link>
           </Button>
         </div>
 
