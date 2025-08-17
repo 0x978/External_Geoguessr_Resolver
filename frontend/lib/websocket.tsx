@@ -26,6 +26,7 @@ export function useWebSocket() {
   if (!context) {
     throw new Error('useWebSocket must be used within a WebSocketProvider')
   }
+
   return context
 }
 
@@ -48,8 +49,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       reconnectTimeoutRef.current = null
     }
   }
-
-  // No need for ping/pong - WebSocket connection is naturally persistent
 
     // Auto-reconnect function
   const attemptReconnect = () => {
