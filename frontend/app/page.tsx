@@ -49,7 +49,7 @@ export default function LandingPage() {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      handleConnect()
+      void handleConnect()
     }
   }
 
