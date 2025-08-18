@@ -4,6 +4,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 import uvicorn
 import json
 import time
+import mysql.connector
+import requests
 
 app = FastAPI()
 latest_coords = {}
@@ -24,6 +26,12 @@ app.add_middleware(
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept() # Accept incoming ws connection
     clients[session_id].add(websocket) # Add to dict of clients
+
+    ip_address = websocket.headers.get("x-forwarded-for") or websocket.client.host
+    headers = dict(websocket.headers)
+    origin = headers.get("origin")
+    user_agent = headers.get("user-agent")
+    log_ws_connection(session_id, ip_address, origin, user_agent)
 
     # When a user connects to ws, and we have some info stored for that ID, send it as they're a late joiner.
     if session_id in latest_coords:
@@ -64,6 +72,39 @@ async def update_coords(request: Request):
 
     return {"status": "ok"}
 
+
+def log_ws_connection(session_id, ip_address, origin=None, user_agent=None):
+    conn = mysql.connector.connect(  # TODO remember to replace w/ live creds when on vps
+        host='localhost',
+        user='root',
+        password='root',
+        database='usage_tracking'
+    )
+    cursor = conn.cursor()
+    country, city = get_country_from_ip(ip_address)
+
+    cursor.execute('''
+        INSERT INTO websocket_connections (session_id, ip_address, country, city, origin, user_agent)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    ''', (session_id, ip_address, country, city, origin, user_agent))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def get_country_from_ip(ip_address):
+    try:
+        response = requests.get(f'http://ip-api.com/json/{ip_address}')
+
+        if response.status_code == 200:
+            data = response.json()
+            country = data.get('country', 'Unknown')
+            city = data.get('city', 'Unknown')
+            return country, city
+        else:
+            return 'Unknown'
+    except Exception as e:
+        return 'Unknown'
 
 
 if __name__ == "__main__":
