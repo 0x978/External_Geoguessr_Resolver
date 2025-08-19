@@ -12,16 +12,6 @@
 // ==/UserScript==
 
 // ====================================Global Vars====================================
-let globalCoordinates = new Proxy({ lat: 0, lng: 0 }, {
-    set(target, prop, value) {
-        if(target[prop] !== value) {
-            console.log(`${prop} changed to`, value);
-            target[prop] = value;
-            sendCoords();
-            return true;
-        }
-    }
-});
 
 let sessionId
 
@@ -34,17 +24,12 @@ XMLHttpRequest.prototype.open = function(method, url) {
             url.startsWith('https://maps.googleapis.com/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/SingleImageSearch'))) {
 
         this.addEventListener('load', function () {
-            let interceptedResult = this.responseText;
             const pattern = /-?\d+\.\d+,-?\d+\.\d+/g;
-            let match = interceptedResult.match(pattern)[0];
-            let split = match.split(",");
-
-            let lat = Number.parseFloat(split[0]);
-            let lng = Number.parseFloat(split[1]);
-
-
-            globalCoordinates.lat = lat
-            globalCoordinates.lng = lng
+            const match = this.responseText.match(pattern);
+            if (match && match[0]) {
+                const [lat, lng] = match[0].split(",").map(Number);
+                sendCoords(lat, lng);
+            }
         });
     }
     return originalOpen.apply(this, arguments);
@@ -52,12 +37,12 @@ XMLHttpRequest.prototype.open = function(method, url) {
 
 
 // ====================================Send To Server====================================
-function sendCoords() {
+function sendCoords(lat, lng) {
     fetch("https://georesolver.0x978.com/coords", {
         method: "POST",
         body: JSON.stringify({
-            "lat":globalCoordinates.lat,
-            "lng":globalCoordinates.lng,
+            "lat":lat,
+            "lng":lng,
             "sessionId":sessionId
         }),
         headers: {
@@ -74,7 +59,6 @@ function generateGuid() { // Taken from: https://stackoverflow.com/a/2117523 :)
 }
 
 sessionId = generateGuid();
-alert(`Your session ID is ${sessionId} please copy it and paste it into https://georesolver.0x978.com/`); // TODO Find better way?
-
+alert(`Your session ID is ${sessionId} please copy it and paste it into https://georesolver.0x978.com/`);
 // Usage ping - sends only script version to server to track usage.
 fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.0`)
