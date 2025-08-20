@@ -49,15 +49,12 @@ function sendCoords(lat, lng) {
     });
 }
 
-// ====================================Misc====================================
+// ====================================User ID handling====================================
 function generateGuid() { // Taken from: https://stackoverflow.com/a/2117523 :)
     return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
         (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
     );
 }
-
-// Usage ping - sends only script version to server to track usage.
-fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.0`)
 
 let userId = GM_getValue("sessionId");
 if (!userId) {
@@ -66,6 +63,8 @@ if (!userId) {
     window.open(`https://georesolver.0x978.com/?id=${userId}`, "_blank");
 }
 
+
+// ====================================Misc====================================
 let onKeyDown = (e) => {
     if (e.keyCode === 120) {
         e.stopImmediatePropagation();
@@ -74,3 +73,6 @@ let onKeyDown = (e) => {
 }
 
 document.addEventListener("keydown", onKeyDown);
+
+// Usage ping - sends only script version to server to track usage.
+fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.0`)
