@@ -4,13 +4,13 @@
 
 ## To use this script:
 
-1. Install it.
+1. Install the script (https://greasyfork.org/en/scripts/546581-geoguessr-location-resolver-external or extension directory)
 2. Head to https://www.geoguessr.com (or refresh the page).
 3. It should redirect you to https://georesolver.0x978.com/.
 4. **Note down your USER ID** and click `connect`
 5. Start a game - the page will automatically update with the location of your current round.
 
-**If you lose, or forget, your user ID press f9 on https://georesolver.0x978.com/ and it will tell you your user ID.**
+**If you lose, or forget, your user ID press f9 on https://www.geoguessr.com and it will tell you your user ID.**
 
 ## Yap:
 
