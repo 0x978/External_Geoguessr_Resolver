@@ -1,19 +1,17 @@
 // ==UserScript==
 // @name         Geoguessr Location Resolver EXTERNAL
 // @namespace    http://tampermonkey.net/
-// @version      Beta1
+// @version      1.0
 // @description  Receive geoguessr location to any device.
 // @author       0x978
 // @match        https://www.geoguessr.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=geoguessr.com
 // @grant        GM_webRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @downloadURL  TBC
 // @updateURL    TBC
 // ==/UserScript==
-
-// ====================================Global Vars====================================
-
-let sessionId
 
 // ====================================Overwriting Fetch====================================
 
@@ -43,7 +41,7 @@ function sendCoords(lat, lng) {
         body: JSON.stringify({
             "lat":lat,
             "lng":lng,
-            "sessionId":sessionId
+            "sessionId":userId
         }),
         headers: {
             "Content-type": "application/json; charset=UTF-8"
@@ -58,7 +56,23 @@ function generateGuid() { // Taken from: https://stackoverflow.com/a/2117523 :)
     );
 }
 
-sessionId = generateGuid();
-alert(`Your session ID is ${sessionId} please copy it and paste it into https://georesolver.0x978.com/`);
 // Usage ping - sends only script version to server to track usage.
 fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.0`)
+
+let userId = GM_getValue("sessionId");
+if (!userId) {
+    userId = generateGuid();
+    GM_setValue("sessionId", userId);
+    window.open("https://georesolver.0x978.com/", "_blank");
+}
+
+console.log("GeoResolver sessionId:", userId);
+
+let onKeyDown = (e) => {
+    if (e.keyCode === 120) {
+        e.stopImmediatePropagation();
+        alert(`Your user ID is: ${userId}`);
+    }
+}
+
+document.addEventListener("keydown", onKeyDown);

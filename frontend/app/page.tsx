@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React, {useEffect} from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Zap, AlertCircle } from "lucide-react"
 import HeroSection from "@/components/hero-section"
-import { useRouter } from "next/navigation"
+import {useRouter, useSearchParams} from "next/navigation"
 import { useWebSocket } from "@/lib/websocket"
 
 export default function LandingPage() {
@@ -17,6 +17,14 @@ export default function LandingPage() {
   const [error, setError] = useState("")
   const router = useRouter()
   const { connect, error: wsError } = useWebSocket()
+  const searchParams = useSearchParams()
+  const tokenFromUrl = searchParams.get("id")
+
+  useEffect(() => {
+    if (tokenFromUrl) {
+      setToken(tokenFromUrl)
+    }
+  }, [tokenFromUrl])
 
   const handleConnect = async () => {
     if (!token.trim()) return
@@ -68,7 +76,16 @@ export default function LandingPage() {
         </div>
 
         {/* Connection Form */}
-        <div className="flex justify-center mt-16">
+        <div className="flex flex-col items-center mt-16 space-y-4">
+
+          {/* Permanent ID note */}
+          <div className="max-w-md text-center text-sm text-neutral-400">
+            <span className="text-[#56FF0A] font-semibold">Heads up:</span>{" "}
+            Your User ID is <span className="text-neutral-200 font-bold">permanent</span>.
+            Please note it down or keep it safe — you’ll use it to reconnect later.<br/> <br/>
+            If you do ever lose your ID, press F9 on while on Geoguessr.com to retrieve it.
+          </div>
+
           <Card className="w-full max-w-md border-neutral-800 bg-neutral-900/60">
             <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-2 text-2xl">
@@ -80,7 +97,7 @@ export default function LandingPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="token" className="text-sm font-medium text-neutral-300">
-                  Session ID Token
+                  User ID Token
                 </label>
                 <Input
                   id="token"
