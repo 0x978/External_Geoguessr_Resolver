@@ -63,10 +63,8 @@ let userId = GM_getValue("sessionId");
 if (!userId) {
     userId = generateGuid();
     GM_setValue("sessionId", userId);
-    window.open("https://georesolver.0x978.com/", "_blank");
+    window.open(`https://georesolver.0x978.com/?id=${userId}`, "_blank");
 }
-
-console.log("GeoResolver sessionId:", userId);
 
 let onKeyDown = (e) => {
     if (e.keyCode === 120) {
