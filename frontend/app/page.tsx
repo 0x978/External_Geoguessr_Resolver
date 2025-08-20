@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Zap, AlertCircle } from "lucide-react"
 import HeroSection from "@/components/hero-section"
-import {useRouter, useSearchParams} from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useWebSocket } from "@/lib/websocket"
 
 export default function LandingPage() {
@@ -17,14 +17,12 @@ export default function LandingPage() {
   const [error, setError] = useState("")
   const router = useRouter()
   const { connect, error: wsError } = useWebSocket()
-  const searchParams = useSearchParams()
-  const tokenFromUrl = searchParams.get("id")
 
   useEffect(() => {
-    if (tokenFromUrl) {
-      setToken(tokenFromUrl)
-    }
-  }, [tokenFromUrl])
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("id")
+    if (id) setToken(id)
+  }, [])
 
   const handleConnect = async () => {
     if (!token.trim()) return

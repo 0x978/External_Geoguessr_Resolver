@@ -45,7 +45,7 @@ export default function DashboardPage() {
         router.push("/")
     }
 
-  }, [locationData])
+  }, [locationData, connect, isConnected, router])
 
   // Show loading screen if no location data yet
   if (!locationData) {
