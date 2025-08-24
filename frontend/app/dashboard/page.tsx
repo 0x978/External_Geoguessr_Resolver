@@ -27,10 +27,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (locationData) {
       setIsLoadingLocation(true)
+      setMapsUrl(generateGoogleMapsUrl(locationData.lat, locationData.lng))
       reverseGeocode(locationData.lat, locationData.lng)
         .then((details) => {
           setLocationDetails(details)
-          setMapsUrl(generateGoogleMapsUrl(locationData.lat, locationData.lng))
         })
         .finally(() => {
           setIsLoadingLocation(false)
