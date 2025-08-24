@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Geoguessr Location Resolver EXTERNAL
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Receive geoguessr location to any device.
 // @author       0x978
 // @match        https://www.geoguessr.com/*
@@ -36,7 +36,7 @@ XMLHttpRequest.prototype.open = function(method, url) {
 
 // ====================================Send To Server====================================
 function sendCoords(lat, lng) {
-    fetch("https://georesolver.0x978.com/coords", {
+    cleanFetch.fetch("https://georesolver.0x978.com/coords", {
         method: "POST",
         body: JSON.stringify({
             "lat":lat,
@@ -74,5 +74,20 @@ let onKeyDown = (e) => {
 
 document.addEventListener("keydown", onKeyDown);
 
+// Let's make sure our fetch is Js fetch and not overwritten.
+const frame = document.createElement('iframe');
+frame.style.display = 'none';
+frame.src = 'about:blank';
+document.body.appendChild(frame);
+const win = frame.contentWindow;
+x = {frame, win}
+const cleanFetch = {
+    fetch: win.fetch.bind(win),
+    Headers: win.Headers,
+    Request: win.Request,
+    Response: win.Response,
+    close: () => frame.remove()
+};
+
 // Usage ping - sends only script version to server to track usage.
-fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.0`)
+cleanFetch.fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.1`)
