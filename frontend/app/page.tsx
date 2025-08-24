@@ -19,6 +19,11 @@ export default function LandingPage() {
   const { connect, error: wsError } = useWebSocket()
 
   useEffect(() => {
+    // Set to stored token if user has visited before.
+    const localUserId = localStorage.getItem("latestToken");
+    if (localUserId) {
+      setToken(localUserId)
+    }
     const params = new URLSearchParams(window.location.search)
     const id = params.get("id")
     if (id) setToken(id)
