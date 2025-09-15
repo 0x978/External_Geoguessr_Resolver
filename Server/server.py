@@ -95,16 +95,14 @@ def log_ws_connection(session_id, ip_address, origin=None, user_agent=None):
 def get_country_from_ip(ip_address):
     try:
         response = requests.get(f'http://ip-api.com/json/{ip_address}')
-
         if response.status_code == 200:
             data = response.json()
             country = data.get('country', 'Unknown')
             city = data.get('city', 'Unknown')
             return country, city
-        else:
-            return 'Unknown'
-    except Exception as e:
-        return 'Unknown'
+    except Exception:
+        pass
+    return "Unknown", "Unknown"
 
 
 if __name__ == "__main__":
