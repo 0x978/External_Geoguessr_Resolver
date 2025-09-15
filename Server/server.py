@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
@@ -7,6 +8,7 @@ import time
 import mysql.connector
 import requests
 import asyncio
+import logging
 
 app = FastAPI()
 latest_coords = {}
@@ -14,6 +16,8 @@ clients = defaultdict(set)
 
 
 app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("georesolver")
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,6 +66,8 @@ async def update_coords(request: Request):
         "sessionId": session_id,
     }
 
+    logger.info(f"coords received for {session_id}: {res}")
+
     # Updates coords dict with coord info
     latest_coords[session_id] = res
 
@@ -76,19 +82,20 @@ async def update_coords(request: Request):
 
 
 def log_ws_connection(session_id, ip_address, origin=None, user_agent=None):
-    conn = mysql.connector.connect(  # TODO remember to replace w/ live creds when on vps
-        host='localhost',
-        user='root',
-        password='root',
-        database='usage_tracking'
+    conn = mysql.connector.connect(  # TODO remember to set these details in VPS
+        host= os.getenv("DB_HOST", "localhost"),
+        user= os.getenv("DB_USER", "root"),
+        password= os.getenv("DB_PASSWORD", "root"),
+        database= os.getenv("DB_NAME", "usage_tracking"),
     )
     cursor = conn.cursor()
     country, city = get_country_from_ip(ip_address)
+    logger.info(f"Websocket connection successful for {session_id} from {city}, {country}")
 
     cursor.execute('''
-        INSERT INTO websocket_connections (session_id, ip_address, country, city, origin, user_agent)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    ''', (session_id, ip_address, country, city, origin, user_agent))
+            INSERT INTO websocket_connections (session_id, ip_address, country, city, origin, user_agent)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        ''', (session_id, ip_address, country, city, origin, user_agent))
 
     conn.commit()
     cursor.close()
