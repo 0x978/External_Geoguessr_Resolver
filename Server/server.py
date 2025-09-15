@@ -6,6 +6,7 @@ import json
 import time
 import mysql.connector
 import requests
+import asyncio
 
 app = FastAPI()
 latest_coords = {}
@@ -31,13 +32,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     headers = dict(websocket.headers)
     origin = headers.get("origin")
     user_agent = headers.get("user-agent")
-    log_ws_connection(session_id, ip_address, origin, user_agent)
 
-    # When a user connects to ws, and we have some info stored for that ID, send it as they're a late joiner.
+    asyncio.create_task(
+        asyncio.to_thread(log_ws_connection, session_id, ip_address, origin, user_agent)
+    )
+
     if session_id in latest_coords:
         await websocket.send_text(json.dumps(latest_coords[session_id]))
 
-    # Keeps connection alive - any incoming msgs do nothing.
     try:
         while True:
             await websocket.receive_text()
@@ -94,7 +96,7 @@ def log_ws_connection(session_id, ip_address, origin=None, user_agent=None):
 
 def get_country_from_ip(ip_address):
     try:
-        response = requests.get(f'http://ip-api.com/json/{ip_address}')
+        response = requests.get(f'http://ip-api.com/json/{ip_address}', timeout=5)
         if response.status_code == 200:
             data = response.json()
             country = data.get('country', 'Unknown')
