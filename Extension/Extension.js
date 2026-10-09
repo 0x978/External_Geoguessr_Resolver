@@ -1,93 +1,93 @@
 // ==UserScript==
 // @name         Geoguessr Location Resolver EXTERNAL
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.3
 // @description  Receive geoguessr location to any device.
 // @author       0x978
 // @match        https://www.geoguessr.com/*
+// @match        https://geoguessr.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=geoguessr.com
-// @grant        GM_webRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @downloadURL  TBC
-// @updateURL    TBC
+// @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @connect      georesolver.0x978.com
+// @connect      *
+// @run-at       document-start
 // ==/UserScript==
 
-// ====================================Overwriting Fetch====================================
+(function () {
+    'use strict';
 
-var originalOpen = XMLHttpRequest.prototype.open;
-XMLHttpRequest.prototype.open = function(method, url) {
-    if (method.toUpperCase() === 'POST' &&
-        (url.startsWith('https://maps.googleapis.com/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/GetMetadata') ||
-            url.startsWith('https://maps.googleapis.com/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/SingleImageSearch'))) {
+    // Fiksni ID koji je već unapred upisan i u tvojoj Android aplikaciji!
+    // Ne moraš da pritiskaš F9 niti da kucaš kod na telefonu.
+    const DEFAULT_USER_ID = "11111111-1111-4111-8111-111111111111";
+    const SERVER_URL = "https://georesolver.0x978.com/coords";
 
-        this.addEventListener('load', function () {
-            const pattern = /-?\d+\.\d+,-?\d+\.\d+/g;
-            const match = this.responseText.match(pattern);
-            if (match && match[0]) {
-                const [lat, lng] = match[0].split(",").map(Number);
-                sendCoords(lat, lng);
-            }
+    let userId = DEFAULT_USER_ID;
+
+    // ====================================Send To Server====================================
+    function sendCoords(lat, lng) {
+        const payload = JSON.stringify({
+            lat: lat,
+            lng: lng,
+            sessionId: userId
         });
-    }
-    return originalOpen.apply(this, arguments);
-};
 
-
-// ====================================Send To Server====================================
-function sendCoords(lat, lng) {
-    cleanFetch.fetch("https://georesolver.0x978.com/coords", {
-        method: "POST",
-        body: JSON.stringify({
-            "lat":lat,
-            "lng":lng,
-            "sessionId":userId
-        }),
-        headers: {
-            "Content-type": "application/json; charset=UTF-8"
+        if (typeof GM_xmlhttpRequest === "function") {
+            GM_xmlhttpRequest({
+                method: "POST",
+                url: SERVER_URL,
+                headers: { "Content-Type": "application/json; charset=UTF-8" },
+                data: payload
+            });
+        } else {
+            fetch(SERVER_URL, {
+                method: "POST",
+                body: payload,
+                headers: { "Content-Type": "application/json; charset=UTF-8" }
+            }).catch(() => {});
         }
-    });
-}
-
-// ====================================User ID handling====================================
-function generateGuid() { // Taken from: https://stackoverflow.com/a/2117523 :)
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-        (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
-    );
-}
-
-let userId = GM_getValue("sessionId");
-if (!userId) {
-    userId = generateGuid();
-    GM_setValue("sessionId", userId);
-    window.open(`https://georesolver.0x978.com/?id=${userId}`, "_blank");
-}
-
-
-// ====================================Misc====================================
-let onKeyDown = (e) => {
-    if (e.keyCode === 120) {
-        e.stopImmediatePropagation();
-        alert(`Your user ID is: ${userId}`);
     }
-}
 
-document.addEventListener("keydown", onKeyDown);
+    // ====================================Overwriting XHR====================================
+    function hookXHR(win) {
+        if (!win || !win.XMLHttpRequest) return;
+        const originalOpen = win.XMLHttpRequest.prototype.open;
+        if (originalOpen._geoHooked) return;
 
-// Let's make sure our fetch is Js fetch and not overwritten.
-const frame = document.createElement('iframe');
-frame.style.display = 'none';
-frame.src = 'about:blank';
-document.body.appendChild(frame);
-const win = frame.contentWindow;
-x = {frame, win}
-const cleanFetch = {
-    fetch: win.fetch.bind(win),
-    Headers: win.Headers,
-    Request: win.Request,
-    Response: win.Response,
-    close: () => frame.remove()
-};
+        win.XMLHttpRequest.prototype.open = function (method, url) {
+            if (typeof method === "string" && method.toUpperCase() === "POST" && typeof url === "string" &&
+                (url.startsWith("https://maps.googleapis.com/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/GetMetadata") ||
+                 url.startsWith("https://maps.googleapis.com/$rpc/google.internal.maps.mapsjs.v1.MapsJsInternalService/SingleImageSearch"))) {
 
-// Usage ping - sends only script version to server to track usage.
-cleanFetch.fetch(`https://geoguessrping.0x978.com/ping?script_version=External_1.1`)
+                this.addEventListener("load", function () {
+                    try {
+                        const pattern = /-?\d+\.\d+,-?\d+\.\d+/g;
+                        const match = this.responseText.match(pattern);
+                        if (match && match[0]) {
+                            const [lat, lng] = match[0].split(",").map(Number);
+                            sendCoords(lat, lng);
+                        }
+                    } catch (e) {}
+                });
+            }
+            return originalOpen.apply(this, arguments);
+        };
+        win.XMLHttpRequest.prototype.open._geoHooked = true;
+    }
+
+    hookXHR(window);
+    if (typeof unsafeWindow !== "undefined") {
+        hookXHR(unsafeWindow);
+    }
+
+    // Opciono: Ako pritisneš F9, prikazaće koji je aktivni ID
+    window.addEventListener("keydown", function (e) {
+        if (e.key === "F9" || e.code === "F9" || e.keyCode === 120) {
+            e.preventDefault();
+            e.stopPropagation();
+            prompt("Tvoj GeoResolver User ID:", userId);
+        }
+    }, true);
+})();

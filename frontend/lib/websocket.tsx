@@ -2,6 +2,36 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
 
+export const DEFAULT_SERVER_URL = "wss://georesolver.0x978.com/ws"
+
+export function normalizeServerUrl(rawInput?: string | null): string {
+  let trimmed = (rawInput || "").trim()
+  if (!trimmed) {
+    if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+      return "ws://localhost:8000/ws"
+    }
+    return DEFAULT_SERVER_URL
+  }
+  while (trimmed.endsWith("/")) {
+    trimmed = trimmed.slice(0, -1)
+  }
+  if (!trimmed.startsWith("ws://") && !trimmed.startsWith("wss://")) {
+    if (trimmed.startsWith("https://")) {
+      trimmed = `wss://${trimmed.slice(8)}`
+    } else if (trimmed.startsWith("http://")) {
+      trimmed = `ws://${trimmed.slice(7)}`
+    } else if (!trimmed.includes(":") && !trimmed.includes(".com")) {
+      trimmed = `ws://${trimmed}:8000`
+    } else {
+      trimmed = `ws://${trimmed}`
+    }
+  }
+  if (!trimmed.endsWith("/ws")) {
+    trimmed = `${trimmed}/ws`
+  }
+  return trimmed
+}
+
 interface LocationData {
   lat: number
   lng: number
@@ -10,13 +40,14 @@ interface LocationData {
 }
 
 interface WebSocketContextType {
-  connect: (sessionId: string) => Promise<boolean>
+  connect: (sessionId: string, customServerUrl?: string) => Promise<boolean>
   disconnect: () => void
   isConnected: boolean
   isConnecting: boolean
   isReconnecting: boolean
   locationData: LocationData | null
   error: string | null
+  serverUrl: string
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null)
@@ -36,8 +67,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [isReconnecting, setIsReconnecting] = useState(false)
   const [locationData, setLocationData] = useState<LocationData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [serverUrl, setServerUrl] = useState<string>(DEFAULT_SERVER_URL)
   const wsRef = useRef<WebSocket | null>(null)
   const sessionIdRef = useRef<string | null>(null)
+  const serverUrlRef = useRef<string>(DEFAULT_SERVER_URL)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const maxReconnectAttempts = 5
@@ -50,64 +83,57 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-    // Auto-reconnect function
+  // Auto-reconnect function
   const attemptReconnect = () => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.log('Max reconnection attempts reached')
       setIsReconnecting(false)
       setError('Connection lost. Please refresh the page.')
       return
     }
 
-    // Don't reconnect if already connected or connecting
     if (isConnected || isConnecting) {
-      console.log('Skipping reconnect - already connected or connecting')
       return
     }
 
     setIsReconnecting(true)
-    // More conservative backoff: start at 3 seconds
-    const delay = Math.min(3000 * Math.pow(1.5, reconnectAttemptsRef.current), 45000) // Conservative backoff, max 45s
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`)
+    const delay = Math.min(3000 * Math.pow(1.5, reconnectAttemptsRef.current), 45000)
 
     reconnectTimeoutRef.current = setTimeout(() => {
       if (sessionIdRef.current && !isConnected && !isConnecting) {
         reconnectAttemptsRef.current++
-        connect(sessionIdRef.current)
+        void connect(sessionIdRef.current, serverUrlRef.current)
       } else {
         setIsReconnecting(false)
       }
     }, delay)
   }
 
-  const connect = async (sessionId: string): Promise<boolean> => {
+  const connect = async (sessionId: string, customServerUrl?: string): Promise<boolean> => {
     if (isConnecting || isConnected) {
-      return false
+      return isConnected
     }
 
     setIsConnecting(true)
     setError(null)
     sessionIdRef.current = sessionId
+    const resolvedServer = normalizeServerUrl(customServerUrl)
+    serverUrlRef.current = resolvedServer
+    setServerUrl(resolvedServer)
     clearTimers()
 
     try {
-      const wsString = window.location.hostname === 'localhost'
-          ? "ws://localhost:8000/ws"
-          : "wss://georesolver.0x978.com/ws"
-      const ws = new WebSocket(`${wsString}/${sessionId}`)
+      const ws = new WebSocket(`${resolvedServer}/${sessionId}`)
       wsRef.current = ws
 
       return new Promise((resolve) => {
         let timeoutId: ReturnType<typeof setTimeout> | null = null
 
         ws.onopen = () => {
-          console.log('WebSocket connected')
           setIsConnected(true)
           setIsConnecting(false)
           setIsReconnecting(false)
-          reconnectAttemptsRef.current = 0 // Reset reconnect attempts on successful connection
+          reconnectAttemptsRef.current = 0
 
-          // Clear connection timeout
           if (timeoutId) {
             clearTimeout(timeoutId)
             timeoutId = null
@@ -119,55 +145,45 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         ws.onmessage = (event) => {
           try {
             const data: LocationData = JSON.parse(event.data)
-            console.log('Received location data:', data)
             setLocationData(data)
           } catch (err) {
             console.error('Error parsing WebSocket message:', err)
           }
         }
 
-                ws.onclose = (event) => {
-          console.log('WebSocket disconnected', event.code, event.reason)
+        ws.onclose = (event) => {
           setIsConnected(false)
           setIsConnecting(false)
           wsRef.current = null
           clearTimers()
 
-          // Only attempt reconnection if:
-          // 1. We had a session
-          // 2. It wasn't a manual disconnect (1000)
-          // 3. We're not already reconnecting
-          // 4. It wasn't a connection timeout/rejection
-          if (sessionIdRef.current &&
-              event.code !== 1000 &&
-              !isReconnecting &&
-              (event.code === 1006 || event.code === 1005 || event.code === 1001)) {
-            console.log('Connection lost, attempting to reconnect...')
+          if (
+            sessionIdRef.current &&
+            event.code !== 1000 &&
+            !isReconnecting &&
+            (event.code === 1006 || event.code === 1005 || event.code === 1001)
+          ) {
             attemptReconnect()
           }
         }
 
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error)
-          setError('Failed to connect to WebSocket')
+        ws.onerror = () => {
+          setError(`Failed to connect to server (${resolvedServer})`)
           setIsConnecting(false)
           clearTimers()
           resolve(false)
         }
 
-        // Set a timeout to reject if connection doesn't succeed
         timeoutId = setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
-            console.log('WebSocket connection timeout')
             setError('Connection timeout')
             setIsConnecting(false)
             ws.close()
             resolve(false)
           }
-        }, 10000) // 10 seconds
+        }, 10000)
       })
-    } catch (err) {
-      console.error('Error creating WebSocket:', err)
+    } catch {
       setError('Failed to create WebSocket connection')
       setIsConnecting(false)
       clearTimers()
@@ -180,7 +196,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     reconnectAttemptsRef.current = 0
 
     if (wsRef.current) {
-      wsRef.current.close(1000) // Manual closure
+      wsRef.current.close(1000)
       wsRef.current = null
     }
     setIsConnected(false)
@@ -207,6 +223,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         isReconnecting,
         locationData,
         error,
+        serverUrl,
       }}
     >
       {children}

@@ -1,0 +1,65 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'flutter_app/**'
+      - '.github/workflows/build-apk.yml'
+
+jobs:
+  build-apk:
+    name: Build Flutter Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Generate Android project & configure AndroidManifest.xml
+        working-directory: flutter_app
+        run: |
+          flutter create . --platforms=android --org com.georesolver
+          python3 -c '
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r") as f:
+              content = f.read()
+          content = content.replace("android:label=\"georesolver_mobile\"", "android:label=\"GeoResolver\"")
+          if "android.permission.INTERNET" not in content:
+              content = content.replace("<application", "<uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application", 1)
+          if "usesCleartextTraffic" not in content:
+              content = content.replace("<application", "<application\n        android:usesCleartextTraffic=\"true\"", 1)
+          with open(path, "w") as f:
+              f.write(content)
+          '
+
+      - name: Install Flutter dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Generate Custom Android Launcher Icons
+        working-directory: flutter_app
+        run: dart run flutter_launcher_icons
+
+      - name: Build Release APK
+        working-directory: flutter_app
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GeoResolver-Android-APK
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
